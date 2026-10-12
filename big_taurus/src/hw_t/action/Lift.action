@@ -1,0 +1,9 @@
+int8 cmd
+int8 slave
+
+---
+bool success
+string message
+
+---
+string status

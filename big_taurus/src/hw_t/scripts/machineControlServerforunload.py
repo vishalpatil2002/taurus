@@ -1,0 +1,606 @@
+#!/usr/bin/env python3
+import rospy
+import actionlib
+from std_msgs.msg import String
+from actionlib_msgs.msg import GoalStatus
+from hw_t.msg import (
+    machineControlAction,
+    machineControlResult,
+    machineControlFeedback,
+   machineControlGoal
+)
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
+from pymongo import MongoClient
+from geometry_msgs.msg import Twist
+from hw_t.msg import ConveyorAction, ConveyorGoal
+import redis
+from pylogix import PLC
+from pymodbus.client import ModbusTcpClient
+
+
+
+
+class MachineControlServer:
+
+    def __init__(self):
+        rospy.init_node("machine_control_server")
+
+        # Mongo connection
+        mongo = MongoClient("mongodb://localhost:27017/")
+        db = mongo["amcl_data"]
+        self.collection = db["Pose_data"]
+
+        self.tag = False
+
+        # move_base client
+        self.movebase = actionlib.SimpleActionClient("move_base", MoveBaseAction)
+        rospy.loginfo("Waiting for move_base...")
+        self.movebase.wait_for_server()
+        rospy.loginfo("Connected to move_base")
+        self.red = redis.Redis(host="localhost", port=6379)
+
+        # action server
+        self.server = actionlib.SimpleActionServer(
+            "machine_control",
+            machineControlAction,
+            execute_cb=self.execute_cb,
+            auto_start=False
+        )
+        self.server.start()
+
+        # states
+        self.pause = False
+        self.abort = False
+        self.aborted_forever = False
+        self.mb_goal = None
+        self.back_action = False
+        
+
+      
+
+        rospy.Subscriber("/goal_control", String, self.control_cb)
+        self.cmd_pub = rospy.Publisher("/robot/cmd_vel", Twist, queue_size=10)
+
+        rospy.loginfo("Machine Control Server Ready")
+        
+
+    # --------------------------------------------------
+
+    def publish_feedback(self, control_status):
+        feedback = machineControlFeedback()
+        state = self.movebase.get_state()
+        feedback.move_base_state = GoalStatus.to_string(state)
+        feedback.control_status = control_status
+        self.server.publish_feedback(feedback)
+
+    # --------------------------------------------------
+    def plc_read(self, tag):
+
+        try:
+            with PLC() as plc:
+                plc.IPAddress = "192.168.3.8"
+
+                result = plc.Read(tag)
+
+                rospy.loginfo("PLC Read → %s", tag)
+                rospy.loginfo("Status: %s", result.Status)
+                rospy.loginfo("Value: %s", result.Value)
+
+                if result.Status == "Success":
+                    return result.Value
+
+        except Exception as e:
+            rospy.logerr("PLC Read Error: %s", e)
+
+        return None
+
+
+    def plc_write(self, tag, value):
+
+        try:
+            with PLC() as plc:
+                plc.IPAddress = "192.168.3.8"
+
+                result = plc.Write(tag, value)
+
+                rospy.loginfo("PLC Write → %s = %s", tag, value)
+                rospy.loginfo("Status: %s", result.Status)
+
+        except Exception as e:
+            rospy.logerr("PLC Write Error: %s", e)
+
+
+    def wait_for_m31(self):
+        from pymodbus.client import ModbusTcpClient
+        import time
+
+        PLC_IP = "192.168.7.5"
+        PLC_ID = 1
+
+        client = ModbusTcpClient(PLC_IP, port=502)
+        client.connect()
+
+        while True:
+            result = client.read_coils(address=31, count=1, slave=PLC_ID)
+
+            if not result.isError():
+                m31 = result.bits[0]
+
+                if m31:
+                    print("M31 became TRUE")
+                    client.close()
+                    return True
+            else:
+                print("Modbus read error")
+
+            time.sleep(0.2)
+        
+
+    def fetch_pose(self, name):
+        doc = self.collection.find_one({"name": name})
+
+        if not doc:
+            rospy.logerr("❌ Pose name not found in Mongo: %s", name)
+            return None
+
+        try:
+            amcl = doc["amclData"]["pose"]["pose"]
+            pos = amcl["position"]
+            ori = amcl["orientation"]
+
+            q = [ori["x"], ori["y"], ori["z"], ori["w"]]
+            roll, pitch, yaw = euler_from_quaternion(q)
+
+            return pos["x"], pos["y"], yaw
+
+        except Exception as e:
+            rospy.logerr("Mongo parse error: %s", e)
+            return None
+
+    # --------------------------------------------------
+
+    def control_cb(self, msg):
+
+        cmd = msg.data.upper()
+
+        if cmd == "ABORT":
+            rospy.logerr("🛑 HARD ABORT — system locked")
+
+            self.abort = True
+            self.pause = False
+            self.aborted_forever = True
+
+            self.movebase.cancel_all_goals()
+            self.mb_goal = None
+
+            self.publish_feedback("HARD_ABORT")
+            return
+
+        if self.aborted_forever:
+            rospy.logerr("SYSTEM LOCKED — waiting for new client goal")
+            return
+
+        mb_state = self.movebase.get_state()
+
+        if cmd == "PAUSE":
+            rospy.logwarn("⏸ PAUSE")
+            self.pause = True
+            if mb_state in [GoalStatus.ACTIVE, GoalStatus.PENDING]:
+                self.movebase.cancel_goal()
+            self.publish_feedback("PAUSED")
+
+        elif cmd == "RESUME":
+            rospy.loginfo("▶ RESUME")
+            self.pause = False
+            if self.mb_goal and mb_state not in [
+                GoalStatus.ACTIVE,
+                GoalStatus.PENDING
+            ]:
+                self.movebase.send_goal(self.mb_goal)
+            self.publish_feedback("RESUMED")
+
+ 
+
+    def move_back(self, distance=0.8, speed=0.05):
+
+        rospy.loginfo("Moving backward")
+
+        twist = Twist()
+        rate = rospy.Rate(20)
+
+        # time required to travel the distance
+        duration = distance / speed
+        start_time = rospy.Time.now().to_sec()
+
+        while not rospy.is_shutdown():
+
+            if rospy.Time.now().to_sec() - start_time >= duration:
+                break
+
+            twist.linear.x = -speed
+            self.cmd_pub.publish(twist)
+
+            rate.sleep()
+
+        # stop robot
+        twist.linear.x = 0.0
+        self.cmd_pub.publish(twist)
+
+        rospy.loginfo("Backward motion completed")
+
+        return "BACK_ACTION_COMPLETED"
+
+
+
+    def conveyor_feedback_cb(self, feedback):
+        rospy.loginfo("Feedback - Current State: %s", feedback.current_state)
+
+
+    # def conveyor_client(self):
+
+    #     client = actionlib.SimpleActionClient("conveyor_action", ConveyorAction)
+
+    #     rospy.loginfo("Waiting for conveyor_action server...")
+    #     client.wait_for_server()
+    #     rospy.loginfo("Connected")
+
+    #     rospy.sleep(2)
+
+    #     # FORWARD
+    #     goal = ConveyorGoal()
+    #     goal.mode = 1
+
+    #     rospy.loginfo("Sending mode: %d", goal.mode)
+
+    #     client.send_goal(goal, feedback_cb=self.conveyor_feedback_cb)
+
+    #     finished = client.wait_for_result(rospy.Duration(10))
+
+    #     if not finished:
+    #         rospy.logwarn("Timeout. Cancelling goal.")
+    #         client.cancel_goal()
+    #     else:
+    #         result = client.get_result()
+    #         rospy.loginfo("Result: %s", result.message)
+
+    #     rospy.sleep(10)
+
+    #     # STOP
+    #     goal = ConveyorGoal()
+    #     goal.mode = 0
+
+    #     client.send_goal(goal, feedback_cb=self.conveyor_feedback_cb)
+    #     client.wait_for_result(rospy.Duration(10))
+
+    #     rospy.sleep(3)
+
+    #     # BACKWARD
+    #     goal = ConveyorGoal()
+    #     goal.mode = 2
+
+    #     client.send_goal(goal, feedback_cb=self.conveyor_feedback_cb)
+    #     client.wait_for_result(rospy.Duration(10))
+
+    #     rospy.sleep(10)
+
+    #     # STOP
+    #     goal = ConveyorGoal()
+    #     goal.mode = 0
+
+    #     client.send_goal(goal, feedback_cb=self.conveyor_feedback_cb)
+    #     client.wait_for_result(rospy.Duration(10))
+
+    #     return "CONVEYOR OPERATION DONE"
+
+
+    def conveyor_client_unload(self):
+
+        client = actionlib.SimpleActionClient("conveyor_action", ConveyorAction)
+
+        rospy.loginfo("Waiting for conveyor_action server...")
+        client.wait_for_server()
+        rospy.loginfo("Connected")
+
+        goal = ConveyorGoal()
+
+        # --------------------------------
+        # WAIT PLC_START_TRANSFER
+        # --------------------------------
+        rospy.loginfo("Waiting PLC_START_TRANSFER")
+
+        
+
+        while self.plc_read("STN41.PLC_START_TRANSFER") != True:
+            rospy.loginfo("!!!!!!!!!!!!!!!!!")
+
+
+        # while not rospy.is_shutdown():
+
+        #     if self.plc_read("STN41.PLC_START_TRANSFER"):
+        #         rospy.loginfo("PLC_START_TRANSFER received")
+        #         break
+
+        #     if rospy.Time.now() - start > rospy.Duration(30):
+        #         rospy.logerr("PLC_START_TRANSFER timeout")
+        #         return "CONVEYOR FAILED"
+
+        #     rospy.sleep(0.5)
+
+        # --------------------------------
+        # ACK TRANSFER
+        # --------------------------------
+        self.plc_write("STN41.AMR_TRANSFER_ACCEPTED", True)
+
+        # --------------------------------
+        # START CONVEYOR (UNLOAD = FORWARD)
+        # --------------------------------
+        rospy.loginfo("Starting conveyor FORWARD")
+
+        goal.mode = 2
+        client.send_goal(goal, feedback_cb=self.conveyor_feedback_cb)
+
+        # --------------------------------
+        # WAIT PLC_TRANSFER_COMPLETE
+        # --------------------------------
+        rospy.loginfo("Waiting PLC_TRANSFER_COMPLETE")
+
+        # start = rospy.Time.now()
+        
+        while self.plc_read("STN41.PLC_TRANSFER_COMPLETE") != True and self.wait_for_m31(): 
+            rospy.loginfo("waiting for plc trnasfer")
+
+        # while not rospy.is_shutdown():
+
+        #     if self.plc_read("STN41.PLC_TRANSFER_COMPLETE"):
+        #         rospy.loginfo("PLC_TRANSFER_COMPLETE received")
+        #         break
+
+        #     if rospy.Time.now() - start > rospy.Duration(30):
+        #         rospy.logerr("PLC_TRANSFER_COMPLETE timeout")
+        #         goal.mode = 0
+        #         client.send_goal(goal)
+        #         return "CONVEYOR FAILED"
+
+        #     rospy.sleep(0.5)
+
+        # --------------------------------
+        # STOP CONVEYOR
+        # --------------------------------
+        rospy.loginfo("Stopping conveyor")
+
+        goal.mode = 0
+        client.send_goal(goal)
+        client.wait_for_result()
+
+        # --------------------------------
+        # FINAL ACK
+        # --------------------------------
+      
+
+        return "CONVEYOR OPERATION DONE" # RECEIVe
+        # if self.red.get("conveyor_receive") == b'True':
+
+        #     rospy.loginfo("Receive mode - moving BACKWARD")
+
+        #     goal.mode = 2
+        #     client.send_goal(goal, feedback_cb=self.conveyor_feedback_cb)
+
+        #     while self.red.get("sensor") != b'True':
+        #         rospy.loginfo("waitingggg for sensor")
+
+        #     goal.mode = 0
+        #     client.send_goal(goal, feedback_cb=self.conveyor_feedback_cb)
+        #     client.wait_for_result()
+
+        #     self.red.set("conveyor_receive", "False")
+        #     self.red.set("sensor", "False")
+
+        # return "CONVEYOR OPERATION DONE"
+
+
+
+
+    
+    def execute_cb(self, goal):
+
+        if self.aborted_forever:
+            rospy.logwarn("New goal → clearing abort lock")
+            self.aborted_forever = False
+            self.abort = False
+            self.pause = False
+
+        result = machineControlResult()
+
+        pose = self.fetch_pose(goal.name)
+        if pose is None:
+            result.success = False
+            self.server.set_aborted(result)
+            return
+        
+        self.plc_write("STN41.AMR_UNLOAD_ACCEPTED",True)
+        
+
+        x, y, yaw = pose
+
+
+        rospy.loginfo("Fetched pose → x=%.3f y=%.3f yaw=%.3f", x, y, yaw)
+
+        self.mb_goal = MoveBaseGoal()
+        self.mb_goal.target_pose.header.frame_id = "map"
+        self.mb_goal.target_pose.header.stamp = rospy.Time.now()
+        self.mb_goal.target_pose.pose.position.x = x
+        self.mb_goal.target_pose.pose.position.y = y
+
+        q = quaternion_from_euler(0, 0, yaw)
+        self.mb_goal.target_pose.pose.orientation.x = q[0]
+        self.mb_goal.target_pose.pose.orientation.y = q[1]
+        self.mb_goal.target_pose.pose.orientation.z = q[2]
+        self.mb_goal.target_pose.pose.orientation.w = q[3]
+
+        self.movebase.send_goal(self.mb_goal)
+
+        rate = rospy.Rate(10)
+
+        while not rospy.is_shutdown():
+
+            if self.abort:
+                rospy.logerr("Execution aborted → full stop")
+
+                result.success = False
+                self.server.set_aborted(result)
+                self.publish_feedback("HARD_ABORT")
+
+                self.abort = False
+                self.pause = False
+                self.mb_goal = None
+                return
+
+            if self.pause:
+                rate.sleep()
+                continue
+
+            state = self.movebase.get_state()
+
+            if state == GoalStatus.ACTIVE:
+                self.publish_feedback("RUNNING")
+
+            # elif state == GoalStatus.SUCCEEDED:
+            #     rospy.loginfo("Goal finished. Waiting for next client.")
+
+            #     result.success = True
+            #     self.server.set_succeeded(result)
+            #     self.publish_feedback("NAVIGATION COMPLETED")
+                
+            #     dock_state,dock_result = self.Docking_client()
+
+            #     if dock_result and dock_result.docking_done and \
+            #     dock_result.rotation_done and \
+            #     dock_result.forward_done:
+
+            #         rospy.loginfo("Full docking pipeline completed")
+
+            #     else:
+            #         rospy.logerr("Docking pipeline failed")
+
+
+
+
+            #     self.mb_goal = None
+            #     self.pause = False
+            #     self.abort = False
+            #     return
+
+
+            elif state == GoalStatus.SUCCEEDED:
+
+                rospy.loginfo("Navigation completed. Starting docking...")
+                self.publish_feedback("NAVIGATION COMPLETED")
+
+               
+
+                dock_cli = actionlib.SimpleActionClient('Table_dock', machineControlAction)
+                dock_cli.wait_for_server()
+
+                dock_goal = machineControlGoal()
+                dock_goal.detect = 1
+                rospy.set_param("/distance_goal_qr", dock_goal.detect)
+
+                dock_cli.send_goal(dock_goal)
+                dock_cli.wait_for_result()
+
+                dock_result = dock_cli.get_result()
+                # rospy.loginfo("dock_resut----------------------------->",dock_result.distance_)
+
+
+                # if dock_result.distance_reached == "Detection completed":
+                #     rospy.loginfo("DOCKING DONE!!!!!")
+                #     rospy.sleep(2)
+                #     move_back_res = self.move_back()
+                #     if move_back_res == "BACK_ACTION_COMPLETED":
+                #         rospy.loginfo("Done back_action")
+                #         result.success = True
+                #         self.server.set_succeeded(result)
+
+
+                if dock_result.distance_reached == "Detection completed":
+                    rospy.loginfo("DOCKING DONE!!!!!")
+                    self.plc_write("STN41.AMR_DOCK_COMPLETE_UNLOAD", True)
+                    rospy.sleep(1)
+
+                 
+                    
+                    
+                    conveyor_res = self.conveyor_client_unload()
+                    if conveyor_res == "CONVEYOR OPERATION DONE":
+                        self.plc_write("STN41.AMR_TRANSFER_ACK_UNLOAD", True)
+                        
+                        
+                      
+
+                        rospy.sleep(2)
+
+                                        
+
+
+                        move_back_res = self.move_back()
+                        if move_back_res == "BACK_ACTION_COMPLETED":
+                            rospy.loginfo("Done back action!!!!!")
+                            result.success = True
+                            self.server.set_succeeded(result)
+
+                else:
+                    rospy.loginfo("DOCKING FAILED, RETRYING!!!!!")
+                    result.success = False
+                    self.server.set_aborted(result)
+
+                    
+
+               
+
+     
+
+                self.mb_goal = None
+                self.pause = False
+                self.abort = False
+                return
+
+
+            elif state in [GoalStatus.ABORTED, GoalStatus.REJECTED]:
+                rospy.logerr("Move base failed")
+
+                result.success = False
+                self.server.set_aborted(result)
+                self.publish_feedback("FAILED")
+
+                self.mb_goal = None
+                self.pause = False
+                self.abort = False
+                return
+
+            if self.server.is_preempt_requested():
+                rospy.logwarn("Client preempted goal")
+
+                self.movebase.cancel_goal()
+                self.server.set_preempted()
+                self.mb_goal = None
+                return
+
+            rate.sleep()
+
+
+
+if __name__ == "__main__":
+    server = MachineControlServer()
+    rospy.spin()
+   
+
+
+
+
+
+
+
+
+
+

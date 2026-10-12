@@ -1,0 +1,49 @@
+#Configuation for robot odometry EKF
+#
+frequency: 10
+two_d_mode: true
+odom0: /taurus/mobile_base_controller/odom
+odom0_config: [true, true, false,
+               false, false, true,
+               true, true, false,
+               false, false, true,
+               false, false, false]
+odom0_differential: false
+
+odom0_pose_noise:  [0.5,  0.5,  1e9,  1e9,  1e9,  0.2]
+odom0_twist_noise: [0.05,  1e9,  1e9,  1e9,  1e9,  0.5]
+
+
+imu0: /imu/data
+imu0_config: [true, true, false,
+              false,  false,  true,
+              true, false, false,
+              false,  false,  true,
+              false,  false,  false]
+imu0_pose_noise:  [0.05,  0.05,  1e9,  1e9,  1e9,  0.05]
+imu0_twist_noise: [0.05,  1e9,  1e9,  1e9,  1e9,  0.05]            
+imu0_differential: false
+imu0_remove_gravitational_acceleration: true
+odom_frame: odom
+base_link_frame: base_link
+world_frame: odom
+
+predict_to_current_time: true
+initial_estimate_covariance: [1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9, 1e-9]
+
+# Process noise — how much we trust the motion model
+process_noise_covariance: [0.05,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0.05,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0.06,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0.03,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0.03,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0.06,  0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0.025, 0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0.025, 0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0.04,  0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0.01,  0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.01,  0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.02,  0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.01,  0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.01,  0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.015]

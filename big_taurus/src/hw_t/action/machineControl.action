@@ -1,0 +1,25 @@
+# Goal
+string name
+string operation
+float64 x
+float64 y
+float64 z
+float64 yaw
+string task_name
+int32 detect
+
+---
+# Result
+bool success
+string distance_reached
+bool dock_done
+bool rotate_done
+
+---
+# Feedback
+string move_base_state
+string control_status
+string reached
+
+
+

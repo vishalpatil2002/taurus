@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<launch>
+
+<!-- <arg name="map_file_1" default="/home/taurus/big_taurus/src/hw_t/map/june11.yaml"/> -->
+<arg name="map_file_1" default="/home/taurus/big_taurus/src/hw_t/map/june11.yaml"/>
+<arg name="amcl_scan_topic" default="/scan"/>
+<arg name="move_forward_only" default="False"/>
+<arg name="map_file_2" default="/home/taurus/big_taurus/src/hw_t/map/june11.yaml"/>
+<!-- <arg name="map_file_2" default="/home/taurus/big_taurus/src/hw_t/map/june11.yaml"/> -->
+
+<include file="$(find hw_t)/launch/hardware.launch"></include>
+
+<include file="$(find hw_t)/launch/amcl.launch" >
+  <arg name="scan_topic" value="$(arg amcl_scan_topic)"/>
+</include>
+
+<include file="$(find hw_t)/launch/move_base.launch"> 
+	<arg name="move_forward_only" value="$(arg move_forward_only)" />
+  </include>
+
+<!-- <include file="$(find ira_laser_tools)/launch/laserscan_multi_merger.launch"></include> -->
+
+
+  <!-- LiDAR Odometry -->
+   <!--<include file="$(find rf2o_laser_odometry)/launch/rf2o_laser_odometry.launch"/>--> 
+   
+   <include file="$(find xsens_driver)/launch/xsens_driver.launch"/>  
+    <node name="ekf_localization" pkg="robot_localization" type="ekf_localization_node">
+        <rosparam command="load" file="$(find hw_t)/config/ekf.yaml" />    
+    </node>
+ <!-- <node pkg="hw_t" type="send_initialpose.py" name="auto_pose"></node>  -->
+ <!-- <node pkg="hw_t" type="save_initialpose.py" name="pose_saver"></node> -->
+  <!--<node pkg="hw_t" type="back_action2.py" name="back"></node>
+  <node pkg="hw_t" type="conveyor_server.py" name="pick"></node>
+  <node pkg="hw_t" type="conveyor_drop.py" name="drop"></node>
+  <node pkg="hw_t" type="dockin.py" name="docking"></node> 
+  <node pkg="hw_t" type="create_path.py" name="path_docking"></node>
+    <node pkg="hw_t" type="pid_server.py" name="pid_server"></node> -->
+<!-- <include file="$(find xsens_driver)/launch/xsens_driver.launch"/>   
+  <node name="ekf_localization" pkg="robot_localization" type="ekf_localization_node"  >
+    <rosparam command="load" file="$(find hw_t)/config/ekf.yaml" />
+   </node>   -->
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file_1)" >
+  </node>
+   <node pkg="map_server" name="map_server1" type="map_server" args="$(arg map_file_2)" >
+  <remap from="map" to="map2"/>
+ </node>
+
+
+  
+</launch>

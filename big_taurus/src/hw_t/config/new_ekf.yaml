@@ -1,0 +1,72 @@
+# ekf_fusion.yaml
+
+frequency: 50
+sensor_timeout: 0.1
+two_d_mode: true          # For ground robot — ignores z, roll, pitch
+publish_tf: true
+map_frame: map
+odom_frame: odom
+base_link_frame: base_link
+world_frame: odom
+
+# ── Wheel Odometry ──────────────────────────────
+odom0: /taurus/mobile_base_controller/odom                      # your wheel encoder topic
+odom0_config: [false, false, false,   # x, y, z       ← don't use absolute pose
+               false, false, false,   # roll, pitch, yaw
+               true,  false, false,   # vx, vy, vz    ← use velocity only
+               false, false, true,    # vroll, vpitch, vyaw
+               false, false, false]   # ax, ay, az
+
+odom0_differential: false
+odom0_relative: false
+odom0_queue_size: 10
+
+# High covariance = less trust (slip-prone)
+odom0_pose_noise:  [0.5,  0.5,  1e9,  1e9,  1e9,  0.2]
+odom0_twist_noise: [0.1,  1e9,  1e9,  1e9,  1e9,  0.05]
+
+# ── LiDAR Odometry ──────────────────────────────
+odom1: /odom_rf2o          # rf2o output topic
+odom1_config: [true,  true,  false,   # x, y, z       ← use pose
+               false, false, true,    # roll, pitch, yaw
+               true,  false, false,   # vx
+               false, false, true,    # vyaw
+               false, false, false]
+
+odom1_differential: false
+odom1_relative: false
+odom1_queue_size: 10
+
+# Lower covariance = more trust (slip-independent)
+odom1_pose_noise:  [0.05, 0.05, 1e9,  1e9,  1e9,  0.02]
+odom1_twist_noise: [0.05, 1e9,  1e9,  1e9,  1e9,  0.02]
+
+# ── IMU ─────────────────────────────────────────
+imu0: /imu/data
+imu0_config: [false, false, false,    # x, y, z
+              false, false, true,    # roll, pitch, yaw  ← let LiDAR handle yaw
+              false, false, false,    # vx, vy, vz
+              false, false, true,     # vyaw  ← angular velocity
+              true,  false, false]    # ax    ← linear accel x
+
+imu0_differential: false
+imu0_relative: false
+imu0_queue_size: 20
+imu0_remove_gravitational_acceleration: true
+
+# Process noise — how much we trust the motion model
+process_noise_covariance: [0.05,  0,     0,     0,     0,     0,     0,     0,     0,  # your wheel encoder topic     0,     0,     0,     0,     0,     0,
+                           0,     0.05,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0.06,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0.03,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0.03,  0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0.06,  0,     0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0.025, 0,     0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0.025, 0,     0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0.04,  0,     0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0.01,  0,     0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.01,  0,     0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.02,  0,     0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.01,  0,     0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.01,  0,
+                           0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0.015]
