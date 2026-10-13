@@ -1,0 +1,8 @@
+prefix=/home/vijay/taurus/big_taurus/devel
+
+Name: sbpl_lattice_planner
+Description: Description of sbpl_lattice_planner
+Version: 0.3.6
+Cflags: -I/home/vijay/taurus/big_taurus/devel/include -I/home/vijay/taurus/big_taurus/src/navigation_experimental/sbpl_lattice_planner/include -I/opt/ros/noetic/include
+Libs: -L${prefix}/lib -lsbpl_lattice_planner /opt/ros/noetic/lib/libsbpl.so
+Requires: roscpp costmap_2d nav_core pluginlib tf tf2 geometry_msgs nav_msgs message_runtime

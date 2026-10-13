@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/vijay/taurus/big_taurus/src/hw_t/src/test_motor.cpp
+modbus/modbus.h
+-
+stdio.h
+-
+unistd.h
+-
+errno.h
+-
+

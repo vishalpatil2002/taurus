@@ -1,0 +1,8 @@
+prefix=/home/vijay/taurus/big_taurus/devel
+
+Name: hw_t
+Description: Description of hw_t
+Version: 0.0.1
+Cflags: -I/home/vijay/taurus/big_taurus/devel/include -I/home/vijay/taurus/big_taurus/src/hw_t/include
+Libs: -L${prefix}/lib -lhw_t -lmoonsModbus
+Requires: angles actionlib actionlib_msgs controller_manager roscpp rospy sensor_msgs std_msgs message_runtime

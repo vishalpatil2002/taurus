@@ -1,0 +1,8 @@
+prefix=/home/vijay/taurus/big_taurus/install
+
+Name: pose_base_controller
+Description: Description of pose_base_controller
+Version: 0.3.6
+Cflags: -I${prefix}/include
+Libs: -L${prefix}/lib 
+Requires: actionlib move_base_msgs nav_msgs roscpp tf2_geometry_msgs tf2_ros geometry_msgs

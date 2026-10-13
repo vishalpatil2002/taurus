@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/vijay/taurus/big_taurus/src/hw_t/include/hw_t/moonsModbus.h
+modbus/modbus.h
+-
+vector
+-
+utility
+-
+cstdint
+-
+iostream
+-
+
+/home/vijay/taurus/big_taurus/src/hw_t/src/moonsModbus.cpp
+hw_t/moonsModbus.h
+/home/vijay/taurus/big_taurus/src/hw_t/src/hw_t/moonsModbus.h
+iostream
+-
+vector
+-
+cstdint
+-
+
