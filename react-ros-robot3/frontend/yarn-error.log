@@ -1,0 +1,80 @@
+Arguments: 
+  /usr/bin/node /snap/node/8481/bin/yarn.js add ros2d nav2djs
+
+PATH: 
+  /opt/ros/melodic/bin:/home/shashiraj/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/lib/jvm/java-15-oracle/bin:/usr/lib/jvm/java-15-oracle/db/bin:/usr/lib/jvm/java-15-oracle/bin:/usr/lib/jvm/java-15-oracle/db/bin:/opt/mssql-tools/bin:~/snap/flutter/common/flutter/bin:/opt/mssql-tools/bin:/opt/mssql-tools/bin
+
+Yarn version: 
+  1.22.19
+
+Node version: 
+  14.21.3
+
+Platform: 
+  linux x64
+
+Trace: 
+  Error: https://registry.yarnpkg.com/nav2djs: Not found
+      at Request.params.callback [as _callback] (/snap/node/8481/lib/cli.js:66145:18)
+      at Request.self.callback (/snap/node/8481/lib/cli.js:140890:22)
+      at Request.emit (events.js:400:28)
+      at Request.<anonymous> (/snap/node/8481/lib/cli.js:141862:10)
+      at Request.emit (events.js:400:28)
+      at IncomingMessage.<anonymous> (/snap/node/8481/lib/cli.js:141784:12)
+      at Object.onceWrapper (events.js:519:28)
+      at IncomingMessage.emit (events.js:412:35)
+      at endReadableNT (internal/streams/readable.js:1333:12)
+      at processTicksAndRejections (internal/process/task_queues.js:82:21)
+
+npm manifest: 
+  {
+    "name": "react-ros-robot",
+    "version": "0.1.0",
+    "private": true,
+    "dependencies": {
+      "@testing-library/jest-dom": "^5.17.0",
+      "@testing-library/react": "^13.4.0",
+      "@testing-library/user-event": "^13.5.0",
+      "react": "^18.2.0",
+      "react-bootstrap": "^2.10.2",
+      "react-dom": "^18.2.0",
+      "react-joystick-component": "^6.2.1",
+      "react-router-dom": "^6.22.3",
+      "react-scripts": "5.0.1",
+      "ros2d": "^0.10.0",
+      "ros3d": "^1.1.0",
+      "roslib": "^1.4.1",
+      "three": "^0.162.0",
+      "web-vitals": "^2.1.4"
+    },
+    "scripts": {
+      "start": "react-scripts start",
+      "build": "react-scripts build",
+      "test": "react-scripts test",
+      "eject": "react-scripts eject"
+    },
+    "eslintConfig": {
+      "extends": [
+        "react-app",
+        "react-app/jest"
+      ]
+    },
+    "browserslist": {
+      "production": [
+        ">0.2%",
+        "not dead",
+        "not op_mini all"
+      ],
+      "development": [
+        "last 1 chrome version",
+        "last 1 firefox version",
+        "last 1 safari version"
+      ]
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile

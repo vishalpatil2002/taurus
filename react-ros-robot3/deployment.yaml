@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: react-ros-robot1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: react-ros-robot1
+  template:
+    metadata:
+      labels:
+        app: react-ros-robot1
+    spec:
+      containers:
+        - name: react-ros-robot1
+          image: vishal6363/react-ros-robot1:9
+          imagePullPolicy: Always
+          ports:
+            - name: frontend
+              containerPort: 3000
+            - name: backend
+              containerPort: 5000
+            - name: rosbridge
+              containerPort: 9090
+          env:
+            - name: ROS_MASTER_URI
+              value: "http://localhost:11311"
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -e
+              source /opt/ros/noetic/setup.bash
+
+              echo "Starting ROS master..."
+              roscore &
+              until rosparam list >/dev/null 2>&1; do
+                sleep 1
+              done
+
+              echo "Starting rosbridge without starting another master..."
+              roslaunch --wait rosbridge_server rosbridge_websocket.launch &
+              sleep 3
+
+              echo "Starting React frontend..."
+              node /app/frontend-server.js &
+
+              echo "Starting backend..."
+              cd /app/backend
+              exec npm start
