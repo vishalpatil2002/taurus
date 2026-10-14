@@ -1,8 +1,0 @@
-prefix=/home/vijay/taurus/big_taurus/devel
-
-Name: lsc_ros_driver
-Description: Description of lsc_ros_driver
-Version: 1.0.4
-Cflags: -I/home/vijay/taurus/big_taurus/src/lsc_ros_driver/include
-Libs: -L${prefix}/lib 
-Requires: roscpp sensor_msgs std_msgs

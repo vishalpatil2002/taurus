@@ -1,8 +1,0 @@
-prefix=/home/vijay/taurus/big_taurus/devel
-
-Name: twist_recovery
-Description: Description of twist_recovery
-Version: 0.3.6
-Cflags: -I/home/vijay/taurus/big_taurus/src/navigation_experimental/twist_recovery/include
-Libs: -L${prefix}/lib -ltwist_recovery
-Requires: nav_core costmap_2d geometry_msgs pluginlib base_local_planner tf2_geometry_msgs tf2_ros

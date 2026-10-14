@@ -1,8 +1,0 @@
-prefix=/home/vijay/taurus/big_taurus/devel
-
-Name: goal_passer
-Description: Description of goal_passer
-Version: 0.3.6
-Cflags: -I/home/vijay/taurus/big_taurus/src/navigation_experimental/goal_passer/include
-Libs: -L${prefix}/lib -lgoal_passer
-Requires: roscpp costmap_2d pluginlib nav_core

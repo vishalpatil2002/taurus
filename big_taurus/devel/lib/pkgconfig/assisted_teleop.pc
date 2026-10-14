@@ -1,8 +1,0 @@
-prefix=/home/vijay/taurus/big_taurus/devel
-
-Name: assisted_teleop
-Description: Description of assisted_teleop
-Version: 0.3.6
-Cflags: -I/home/vijay/taurus/big_taurus/src/navigation_experimental/assisted_teleop/include -I/usr/include/eigen3
-Libs: -L${prefix}/lib -llaser_scan_max_range_filter
-Requires: tf2_ros costmap_2d roscpp roslib geometry_msgs move_base_msgs actionlib message_filters base_local_planner angles pluginlib sensor_msgs filters

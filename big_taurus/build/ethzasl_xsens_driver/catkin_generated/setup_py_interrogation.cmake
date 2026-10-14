@@ -1,7 +1,0 @@
-set(xsens_driver_SETUP_PY_SETUP_MODULE "setuptools")
-set(xsens_driver_SETUP_PY_VERSION "2.2.2")
-set(xsens_driver_SETUP_PY_SCRIPTS "")
-set(xsens_driver_SETUP_PY_PACKAGES "xsens_driver")
-set(xsens_driver_SETUP_PY_PACKAGE_DIRS "src/xsens_driver")
-set(xsens_driver_SETUP_PY_MODULES "")
-set(xsens_driver_SETUP_PY_MODULE_DIRS "")

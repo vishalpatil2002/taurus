@@ -1,8 +1,0 @@
-prefix=/home/vijay/taurus/big_taurus/devel
-
-Name: pose_follower
-Description: Description of pose_follower
-Version: 0.3.6
-Cflags: -I/home/vijay/taurus/big_taurus/devel/include -I/home/vijay/taurus/big_taurus/src/navigation_experimental/pose_follower/include
-Libs: -L${prefix}/lib -lpose_follower
-Requires: nav_core base_local_planner costmap_2d roscpp tf2_geometry_msgs tf2_ros nav_msgs pluginlib dynamic_reconfigure

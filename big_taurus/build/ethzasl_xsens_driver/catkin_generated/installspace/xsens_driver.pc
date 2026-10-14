@@ -1,8 +1,0 @@
-prefix=/home/vijay/taurus/big_taurus/install
-
-Name: xsens_driver
-Description: Description of xsens_driver
-Version: 2.2.2
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 
