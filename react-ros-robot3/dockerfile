@@ -154,10 +154,10 @@ RUN npm install -g \
 
 WORKDIR /app/frontend
 
-COPY frontend/package.json frontend/package-lock.json ./
+COPY react-ros-robot3/frontend/package.json react-ros-robot3/frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-COPY frontend/ ./
+COPY react-ros-robot3/frontend/ ./
 RUN npm run build
 
 # ============================================================
@@ -166,15 +166,12 @@ RUN npm run build
 
 WORKDIR /app/backend
 
-COPY backend/package.json backend/package-lock.json ./
+COPY react-ros-robot3/backend/package.json react-ros-robot3/backend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
 
-RUN --mount=type=cache,target=/root/.npm \
-    npm config set registry https://registry.npmjs.org/ \
-    && npm ci --no-audit --no-fund --prefer-offline
+COPY react-ros-robot3/backend/ /app/backend/
 
-COPY backend/ /app/backend/
-
-COPY frontend-server.js /app/frontend-server.js
+COPY react-ros-robot3/frontend-server.js /app/frontend-server.js
 
 
 # ============================================================
