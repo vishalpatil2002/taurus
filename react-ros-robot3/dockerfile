@@ -27,6 +27,8 @@ RUN apt-get update && apt-get install -y \
     vim \
     nano \
     build-essential \
+    pkg-config \
+    libmodbus-dev \
     net-tools \
     htop \
     tree \
@@ -68,10 +70,12 @@ RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/r
 # 3. Install ROS 1 Noetic Desktop Full
 # ============================================================
 
-RUN apt-get update && apt-get install -y \
-    ros-noetic-desktop-full \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ros-noetic-desktop-full && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 
 # ============================================================
@@ -109,7 +113,6 @@ WORKDIR /app/big_taurus
 
 COPY big_taurus/src/ /app/big_taurus/src/
 
-RUN bash -c "source /opt/ros/noetic/setup.bash && catkin_make"
 
 # ============================================================
 # 5. Python dependencies
