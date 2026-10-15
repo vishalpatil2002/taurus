@@ -109,8 +109,6 @@ WORKDIR /app/big_taurus
 
 COPY big_taurus/src/ /app/big_taurus/src/
 
-RUN bash -c "source /opt/ros/noetic/setup.bash && catkin_make"
-
 # ============================================================
 # 5. Python dependencies
 # ============================================================
