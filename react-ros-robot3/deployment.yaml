@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: react-ros-robot1
-          image: vishal6363/react-ros-robot1:9
+          image:  vishal6363/taurus-ros1:latest
           imagePullPolicy: Always
           ports:
             - name: frontend
